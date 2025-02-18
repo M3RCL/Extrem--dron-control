@@ -99,13 +99,13 @@ class DroneEnv(gym.Env):
     
     metadata = {'render_modes': ['human']}
     
-    def __init__(self, waypoint_list=None, max_episode_steps=350, client_id=0, render_mode='human'):
+    def __init__(self, waypoint_list=None, max_episode_steps=1000, client_id=0, render_mode='human'):
         super(DroneEnv, self).__init__()
         
         # Use different client IDs for parallel environments
         self.client_id = client_id
         self.render_mode = render_mode
-        self.thresh_dist = 15.0
+        self.thresh_dist = 45.0
         self.beta = 1.0
         self.speed_weight = 0.5
         self.min_speed = -0.05
@@ -119,7 +119,7 @@ class DroneEnv(gym.Env):
             print(f"Failed to connect to AirSim (client {client_id}): {str(e)}")
             raise
         
-        self.step_length = 50.0
+        self.step_length = 25.0
         # Updated action space: 
         # 0: move forward (+x)
         # 1: move right (+y)
@@ -132,8 +132,8 @@ class DroneEnv(gym.Env):
         
         self.observation_space = spaces.Dict({
             "features": spaces.Box(
-                low=np.array([-50, -math.pi, -50, -25, -25, -25, -10, -10, -10], dtype=np.float32),
-                high=np.array([ 50,  math.pi,  50,  25,  25,  25,  10,  10,  10], dtype=np.float32)
+                low=np.array([-25, -math.pi, -25, -25, -25, -10, -10, -10], dtype=np.float32),
+                high=np.array([ 25,  math.pi,  25,  25,  25,  10,  10,  10], dtype=np.float32)
             ),
             "depth": spaces.Box(
                 low=0.0, 
@@ -145,11 +145,10 @@ class DroneEnv(gym.Env):
 
         self.speed = 10.0
         self.dt = 0.1
-
+        #np.array([  1.55265,   -38.9786,    -25.5225   ]),
         if waypoint_list is None:
             self.waypoints = [
-                np.array([  -8.55265,   -31.9786,    -19.0225   ]),
-                np.array([  12.87350317, -49.07368802, -44.06586883]),
+                np.array([  12.87350317, -52.07368802, -36.06586883]),
                 np.array([  38.98696329, -60.61485177, -57.63369411]),
                 np.array([  68.69143613, -67.10846262, -62.36151646]),
                 np.array([ 100.89062751, -69.06089195, -60.88487649]),
@@ -173,21 +172,24 @@ class DroneEnv(gym.Env):
             self.waypoints = waypoint_list
 
         self.current_wp_index = 0
-        self.goal_threshold = 2.0
+        self.goal_threshold = 5.0 # waypoint bonus threshold
         self.obstacle_threshold = 3.0
         self.prev_distance = None
         self.step_count = 0
         self.max_episode_steps = max_episode_steps
         self.waypoint_start_step = 0
         self.reward = 0
-        
+        self.waypoint_start_dist = np.array([0.0, 0.0, 0.0])
         self.episode_rewards = []
         self.episode_lengths = []
         self.collision_count = 0
         self.successful_waypoints = 0
         
         self.np_random = None
-        self.seed()     
+        self.seed()
+        
+        # Initialize previous velocity for smoothness penalty
+        self.prev_velocity = np.array([0.0, 0.0, 0.0])
         
     def _randomize_environment(self):
         self.client.simSetPhysicsEngineParameter(mass=random.uniform(0.8, 1.2))
@@ -218,20 +220,26 @@ class DroneEnv(gym.Env):
         self.step_count = 0
         self.current_wp_index = 0
         self.waypoint_start_step = 0
+        self.early_terminate()
         try:
             self.client.reset()
             self.client.enableApiControl(True)
             self.client.armDisarm(True)
             start_pose = airsim.Pose()
-            start_pose.position.x_val = -10
-            start_pose.position.y_val = -20
-            start_pose.position.z_val = -20
+            start_pose.position.x_val = 12.87350317-5
+            start_pose.position.y_val = -52.07368802+ 3
+            start_pose.position.z_val = -36.06586883
+            
             self.client.simSetVehiclePose(start_pose, True)
+            
             time.sleep(0.1)
             self.client.takeoffAsync().join()
             state = self._get_state()
             self.prev_distance = self._distance_to_goal(state["features"])
+            self.waypoint_start_dist = self.prev_distance
             self.waypoint_start_step = self.step_count
+            # Reset previous velocity to zero at the beginning of each episode.
+            self.prev_velocity = np.array([0.0, 0.0, 0.0])
             return state, {}
         except Exception as e:
             print(f"Error in reset (client {self.client_id}): {str(e)}")
@@ -260,7 +268,7 @@ class DroneEnv(gym.Env):
                     vx + self.step_length * quad_offset[0],
                     vy + self.step_length * quad_offset[1],
                     vz + self.step_length * quad_offset[2],
-                    1
+                    0.7
                 ).join()
             except Exception as e:
                 print(f"Error applying translation action: {e}")
@@ -268,37 +276,38 @@ class DroneEnv(gym.Env):
         else:
             yaw_rate = 30 if action == 5 else -30
             try:
-                self.client.rotateByYawRateAsync(yaw_rate, 1).join()
+                self.client.rotateByYawRateAsync(yaw_rate, 1.5).join()
             except Exception as e:
                 print(f"Error applying rotation action: {e}")
                 return self._get_state(), -100, True, True, {}
 
         state = self._get_state()
+        
+        # Use our new reward function
         reward = self._compute_enhanced_reward(state)
+        
         terminated = False
         truncated = False
-        if reward <= -40:
-            terminated = True
-            print("Way away from point reward", reward)
         if self.client.simGetCollisionInfo().has_collided:
-            reward = -100.0
+            reward =  -100.0
             self.collision_count += 1
             print("Collision detected!")
             terminated = True
-        reward = self._shape_reward(reward, state, {})
+        # If reward is very low, terminate the episode
+        if self.early_terminate():
+            terminated = True
+            print("Way away from point reward", reward)
         
+
         curr_distance = self._distance_to_goal(state["features"])
-        if curr_distance < self.goal_threshold:
-            reward += 75.0
-            self.successful_waypoints += 1
-            print("Waypoint reached!")
-            self.current_wp_index += 1
-            if self.current_wp_index >= len(self.waypoints):
+        
+        if self.current_wp_index >= len(self.waypoints):
                 print("All waypoints reached!")
                 terminated = True
-
+        
         if self.step_count >= self.max_episode_steps:
             truncated = True
+        #print("reward", reward)
 
         info = {
             "min_depth": float(np.min(state["depth"])),
@@ -307,30 +316,111 @@ class DroneEnv(gym.Env):
             "distance": curr_distance
         }
         return state, reward, terminated, truncated, info
+    def early_terminate(self):
+        pose = self.client.simGetVehiclePose()
+        
+        current_pos = np.array([
+            pose.position.x_val,
+            pose.position.y_val,
+            pose.position.z_val
+        ])
+        dist =1e7
+        #starting_pos = self.waypoint_start_dist
+        next_wp = self.waypoints[self.current_wp_index]
+        dist = min(dist,np.linalg.norm(np.cross((current_pos - next_wp), (current_pos - self.waypoint_start_dist))/np.linalg.norm(next_wp - self.waypoint_start_dist)))
+        #print("dist", dist)
+        if dist > self.thresh_dist:
+            return True
+        return False
 
     def _compute_enhanced_reward(self, state):
-        pts = self.waypoints
-        pose = self.client.getMultirotorState().kinematics_estimated.position
-        current_pos = np.array(list([pose.x_val, pose.y_val, pose.z_val]))
+        """
+        New reward function with multiple components:
+          1. Distance penalty (closer to the waypoint is better)
+          2. Bonus reward if within a threshold (waypoint reached)
+          3. Smoothness penalty (penalize abrupt accelerations)
+          4. Collision penalty
+          5. Time penalty
+          6. Small heading alignment reward
+        """
+        # Get current drone position
+        pose = self.client.simGetVehiclePose()
+        
+        current_pos = np.array([
+            pose.position.x_val,
+            pose.position.y_val,
+            pose.position.z_val
+        ])
+        next_wp = self.waypoints[self.current_wp_index]
+        
+        distance = np.linalg.norm(current_pos - next_wp)
+        #print("distance", distance)
+        
+        # If the drone is far away, return an immediate penalty
+        
+        
+        # Reward weights (tune these as needed)
+        alpha = 1   # Distance weight
+        beta = 2.0    # Waypoint bonus
+        gamma = 0.01   # Smoothness penalty weight
+        delta = 0.3 # dis upwardas goal
+        #distz = state["features"][2]
+        epsilon = 2  # Time penalty
         dist = 1e7
-        for i in range(0, len(pts) - 1):
-            dist = min(
-                dist,
-                np.linalg.norm(np.cross((current_pos - pts[i]), (current_pos - pts[i + 1])))
-                / np.linalg.norm(pts[i] - pts[i + 1])
-            )
-        if dist > self.thresh_dist:
-            reward = -40
+        goal_direction = next_wp - current_pos
+        if distance > 1e-6:  # Avoid division by zero
+            goal_direction_normalized = goal_direction / distance
         else:
-            reward_dist = math.exp(-self.beta * dist) - 0.5
-            quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
-            reward_speed = (np.linalg.norm([quad_vel.x_val, quad_vel.y_val, quad_vel.z_val]) - 0.5)
-            reward = reward_dist + reward_speed + 0.06 * (self.waypoint_start_step - self.step_count)
-        # Small reward for heading alignment
+            goal_direction_normalized = np.zeros_like(goal_direction)
+        if self.current_wp_index < len(self.waypoints)-1:
+            af_nex_wp = self.waypoints[self.current_wp_index + 1]
+            dist = min(dist, np.linalg.norm(np.cross((af_nex_wp - next_wp), (af_nex_wp - self.waypoint_start_dist))/np.linalg.norm(next_wp - af_nex_wp)))
+        
+        else:
+        
+            dist = min(dist, np.linalg.norm(np.cross((current_pos - next_wp), (current_pos - self.waypoint_start_dist))/np.linalg.norm(next_wp - self.waypoint_start_dist)))
+        reward = beta* math.exp(-alpha * dist) 
+        if distance > self.thresh_dist:
+            reward += -50
+        if distance < self.goal_threshold:
+            reward += 150.0
+            self.successful_waypoints += 1
+            self.waypoint_start_dist = distance
+            print("Waypoint reached!")
+            self.current_wp_index += 1
+        # 1. Distance reward (the closer, the better)
+        #reward = alpha / (distance +1)+delta
+        #reward +=0.01 * ((distz))
+        # 2. Waypoint bonus if within a threshold (using goal_threshold)
+        
+        
+        #reward += delta * np.sum((current_pos - next_wp) / self.dt)
+        # 3. Smoothness penalty: penalize high acceleration
+        quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
+        current_velocity = np.array([quad_vel.x_val, quad_vel.y_val, quad_vel.z_val])
+        goal_direction = next_wp - current_pos
+        
+            
+        velocity_toward_goal = np.dot(current_velocity, goal_direction_normalized)
+        reward += beta * velocity_toward_goal
+        acceleration = (current_velocity - self.prev_velocity) / self.dt
+        smooth_penalty = gamma * np.linalg.norm(acceleration)
+        reward -= smooth_penalty
+        # Update previous velocity for next step
+        self.prev_velocity = current_velocity.copy()
+        
+        # 4. Collision penalty
+       
+        
+        # 5. Time penalty
+        reward -= epsilon * self.dt
+        
+        # 6. Small reward for heading alignment
         heading_error = state["features"][1]
-        heading_reward = 0.01 * math.cos(heading_error)
+        heading_reward = 0.1 * math.cos(heading_error)
         reward += heading_reward
-        return reward
+        
+        return reward 
 
     def interpret_action(self, action):
         # Actions:
@@ -353,7 +443,7 @@ class DroneEnv(gym.Env):
             return (0, 0, 0)  # For translation; rotation handled separately
 
     def _get_state(self):
-        pose = self.client.simGetVehiclePose()
+        pose = self.client.getMultirotorState().kinematics_estimated
         drone_x = pose.position.x_val
         drone_y = pose.position.y_val
         drone_z = pose.position.z_val
@@ -371,10 +461,11 @@ class DroneEnv(gym.Env):
         drone_yaw = self._get_yaw_from_pose(pose)
         goal = self.waypoints[self.current_wp_index]
         goal_x, goal_y, goal_z = goal
-
+        pos = np.array([drone_x, drone_y, drone_z])
+        goal = np.array([goal_x, goal_y, goal_z])
         dx = goal_x - drone_x
         dy = goal_y - drone_y
-        distance = math.sqrt(dx**2 + dy**2)
+        distance = np.linalg.norm(pos- goal)
         desired_heading = math.atan2(dy, dx)
         heading_error = desired_heading - drone_yaw
         heading_error = (heading_error + math.pi) % (2 * math.pi) - math.pi
@@ -394,7 +485,7 @@ class DroneEnv(gym.Env):
         hybrid_features = np.array([
             distance,
             heading_error,
-            altitude_error,
+            #altitude_error,
             vx_body, vy_body, vz_body,
             roll_rate, pitch_rate, yaw_rate
         ], dtype=np.float32)
@@ -435,6 +526,13 @@ class DroneEnv(gym.Env):
             self.client.enableApiControl(False)
         except:
             pass
+
+def make_env(rank, seed=0):
+    def _init():
+        env = DroneEnv()
+        env.seed(seed + rank)
+        return Monitor(env)
+    return _init
 class ResidualBlock(nn.Module):
     """Residual block for better gradient flow."""
     def __init__(self, channels):
