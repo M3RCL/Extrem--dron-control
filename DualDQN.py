@@ -28,6 +28,9 @@ class DroneEnv(gym.Env):
     
     metadata = {'render_modes': ['human']}
     
+    
+    
+    
     def __init__(self, waypoint_list=None, max_episode_steps=1000, client_id=0, render_mode='human'):
         super(DroneEnv, self).__init__()
         
@@ -48,7 +51,7 @@ class DroneEnv(gym.Env):
             print(f"Failed to connect to AirSim (client {client_id}): {str(e)}")
             raise
         
-        self.step_length = 25.0
+        self.step_length = 35.0
         # Updated action space: 
         # 0: move forward (+x)
         # 1: move right (+y)
@@ -57,12 +60,12 @@ class DroneEnv(gym.Env):
         # 4: move down (-z)
         # 5: rotate left (yaw +)
         # 6: rotate right (yaw -)
-        self.action_space = spaces.Discrete(7)
+        self.action_space = spaces.Discrete(6)
         
         self.observation_space = spaces.Dict({
             "features": spaces.Box(
-                low=np.array([-25, -math.pi, -25, -25, -25, -10, -10, -10], dtype=np.float32),
-                high=np.array([ 25,  math.pi,  25,  25,  25,  10,  10,  10], dtype=np.float32)
+                low=np.array([-15, -math.pi, -math.pi,   -math.pi], dtype=np.float32),
+                high=np.array([ 15,  math.pi,  math.pi,    math.pi], dtype=np.float32)
             ),
             "depth": spaces.Box(
                 low=0.0, 
@@ -77,31 +80,33 @@ class DroneEnv(gym.Env):
         #np.array([  1.55265,   -38.9786,    -25.5225   ]),
         if waypoint_list is None:
             self.waypoints = [
-                np.array([  12.87350317, -52.07368802, -36.06586883]),
-                np.array([  38.98696329, -60.61485177, -57.63369411]),
-                np.array([  68.69143613, -67.10846262, -62.36151646]),
-                np.array([ 100.89062751, -69.06089195, -60.88487649]),
-                np.array([ 134.48824319, -66.97851115, -55.83931483]),
-                np.array([ 168.38798898, -61.3676916,  -49.86037208]),
-                np.array([ 201.49670725, -52.73448285, -45.57539505]),
-                np.array([ 233.1305958,  -41.54293266, -44.54235545]),
-                np.array([ 263.41745251, -28.1738148,  -46.19905066]),
-                np.array([ 292.58067796, -12.99809375, -49.73353133]),
-                np.array([ 320.84367277,   3.613266,    -54.33384812]),
-                np.array([ 348.42983753,  21.28929999, -59.18805166]),
-                np.array([ 375.56257285,  39.65904373, -63.4841926 ]),
-                np.array([ 402.46527931,  58.35153273, -66.4103216 ]),
-                np.array([ 429.36135754,  76.99580253, -67.15448929]),
-                np.array([ 456.47420812,  95.22088863, -64.90474633]),
-                np.array([ 484.02723165, 112.65582657, -58.84914337]),
-                np.array([ 512.24382875, 128.92965185, -48.17573104]),
-                np.array([ 541.3474,     143.6714,     -32.07256   ])
-            ]
+    np.array([ 12.87350317, -52.07368802, -36.06586883]),
+    np.array([ 36.13082460, -59.79192961, -56.52791401]),
+    np.array([ 66.43108571, -66.76957152, -62.28243633]),
+    np.array([ 98.06828455, -69.06830087, -61.18038764]),
+    np.array([ 129.42899654, -67.52090755, -56.72173514]),
+    np.array([ 160.34291208, -63.00117731, -51.22205306]),
+    np.array([ 190.90583561, -55.83497013, -46.64255794]),
+    np.array([ 221.03676980, -46.16065198, -44.57226201]),
+    np.array([ 250.41959714, -34.22145192, -45.20389275]),
+    np.array([ 278.84824209, -20.41131184, -47.87064589]),
+    np.array([ 306.34814354,  -5.12075649, -51.87554520]),
+    np.array([ 333.08684462,  11.30386012, -56.49261404]),
+    np.array([ 359.30983407,  28.56461624, -61.01661208]),
+    np.array([ 385.28315650,  46.38500521, -64.74038029]),
+    np.array([ 411.24809179,  64.47019630, -66.93319638]),
+    np.array([ 437.37017549,  82.46149602, -66.83556848]),
+    np.array([ 463.67813611,  99.90397299, -63.71223223]),
+    np.array([ 490.01109921,  116.25251218, -56.97515214]),
+    np.array([ 516.03589875,  130.97690355, -46.38035276]),
+    np.array([ 541.34740000,  143.67140000, -32.07256000]),
+]
+
         else:
             self.waypoints = waypoint_list
 
         self.current_wp_index = 0
-        self.goal_threshold = 5.0 # waypoint bonus threshold
+        self.goal_threshold = 4.0 # waypoint bonus threshold
         self.obstacle_threshold = 3.0
         self.prev_distance = None
         self.step_count = 0
@@ -183,32 +188,31 @@ class DroneEnv(gym.Env):
         self.step_count += 1
         
         # Actions 0-4: translation; 5: rotate left; 6: rotate right.
-        if action < 5:
-            quad_offset = self.interpret_action(action)
-            quad_state = self.client.getMultirotorState()
-            quad_vel = quad_state.kinematics_estimated.linear_velocity
-            vx = quad_vel.x_val if not math.isnan(quad_vel.x_val) else 0.0
-            vy = quad_vel.y_val if not math.isnan(quad_vel.y_val) else 0.0
-            vz = quad_vel.z_val if not math.isnan(quad_vel.z_val) else 0.0
-            if math.isnan(quad_vel.x_val) or math.isnan(quad_vel.y_val) or math.isnan(quad_vel.z_val):
-                print(f"[DEBUG] NaN detected in linear velocity in step(): Original values: {quad_vel}")
-            try:
-                self.client.moveByVelocityAsync(
-                    vx + self.step_length * quad_offset[0],
-                    vy + self.step_length * quad_offset[1],
-                    vz + self.step_length * quad_offset[2],
-                    0.7
-                ).join()
-            except Exception as e:
+        quad_offset = self.interpret_action(action)
+        quad_state = self.client.getMultirotorState()
+        quad_vel = quad_state.kinematics_estimated.linear_velocity
+            
+        # Smooth velocity transitions
+        target_vx = self.step_length * quad_offset[0]
+        target_vy = self.step_length * quad_offset[1]
+        target_vz = self.step_length * quad_offset[2]
+            
+        current_vx = quad_vel.x_val if not math.isnan(quad_vel.x_val) else 0.0
+        current_vy = quad_vel.y_val if not math.isnan(quad_vel.y_val) else 0.0
+        current_vz = quad_vel.z_val if not math.isnan(quad_vel.z_val) else 0.0
+            
+        # Interpolate velocities
+        alpha = 0.3  # Smoothing factor
+        new_vx = current_vx + alpha * (target_vx - current_vx)
+        new_vy = current_vy + alpha * (target_vy - current_vy)
+        new_vz = current_vz + alpha * (target_vz - current_vz)
+            
+        try:
+            self.client.moveByVelocityAsync(new_vx, new_vy, new_vz, 1).join()
+        except Exception as e:
                 print(f"Error applying translation action: {e}")
                 return self._get_state(), -100, True, True, {}
-        else:
-            yaw_rate = 30 if action == 5 else -30
-            try:
-                self.client.rotateByYawRateAsync(yaw_rate, 1.5).join()
-            except Exception as e:
-                print(f"Error applying rotation action: {e}")
-                return self._get_state(), -100, True, True, {}
+        
 
         state = self._get_state()
         
@@ -246,22 +250,35 @@ class DroneEnv(gym.Env):
         }
         return state, reward, terminated, truncated, info
     def early_terminate(self):
-        pose = self.client.simGetVehiclePose()
-        
-        current_pos = np.array([
-            pose.position.x_val,
-            pose.position.y_val,
-            pose.position.z_val
-        ])
-        dist =1e7
-        #starting_pos = self.waypoint_start_dist
-        next_wp = self.waypoints[self.current_wp_index]
-        dist = min(dist,np.linalg.norm(np.cross((current_pos - next_wp), (current_pos - self.waypoint_start_dist))/np.linalg.norm(next_wp - self.waypoint_start_dist)))
-        #print("dist", dist)
-        if dist > self.thresh_dist:
-            return True
+        pose = self.client.getMultirotorState().kinematics_estimated
+        if self.current_wp_index < len(self.waypoints)-1:
+            current_pos = np.array([
+                pose.position.x_val,
+                pose.position.y_val,
+                pose.position.z_val
+            ])
+            if self.current_wp_index == len(self.waypoints):
+                return False
+            dist =1e7
+            #starting_pos = self.waypoint_start_dist
+            next_wp = self.waypoints[self.current_wp_index]
+            af_nex_wp = self.waypoints[self.current_wp_index+1]
+            dist = 10000000
+            dist = min(
+                        dist,
+                        np.linalg.norm(np.cross((current_pos - next_wp), (current_pos - af_nex_wp)))
+                        / np.linalg.norm(next_wp - af_nex_wp),
+                    )
+            if dist > self.thresh_dist:
+                return True
         return False
+    def compute_potential(self, current_pos, waypoint, path_start):
+            # Project current_pos onto the line defined by path_start and waypoint
+            line_vec = waypoint - path_start
+            proj = path_start + np.dot(current_pos - path_start, line_vec) / np.dot(line_vec, line_vec) * line_vec
+            return -np.linalg.norm(current_pos - proj)
 
+        
     def _compute_enhanced_reward(self, state):
         """
         New reward function with multiple components:
@@ -273,13 +290,11 @@ class DroneEnv(gym.Env):
           6. Small heading alignment reward
         """
         # Get current drone position
-        pose = self.client.simGetVehiclePose()
-        
-        current_pos = np.array([
-            pose.position.x_val,
-            pose.position.y_val,
-            pose.position.z_val
-        ])
+        pose = self.client.getMultirotorState().kinematics_estimated
+        drone_x = pose.position.x_val
+        drone_y = pose.position.y_val
+        drone_z = pose.position.z_val
+        current_pos = np.array(list([drone_x, drone_y, drone_z]))
         next_wp = self.waypoints[self.current_wp_index]
         
         distance = np.linalg.norm(current_pos - next_wp)
@@ -290,33 +305,83 @@ class DroneEnv(gym.Env):
         
         # Reward weights (tune these as needed)
         alpha = 1   # Distance weight
-        beta = 2.0    # Waypoint bonus
+        beta = 1.0    # Waypoint bonus
         gamma = 0.01   # Smoothness penalty weight
         delta = 0.3 # dis upwardas goal
         #distz = state["features"][2]
-        epsilon = 2  # Time penalty
-        dist = 1e7
-        goal_direction = next_wp - current_pos
-        if distance > 1e-6:  # Avoid division by zero
-            goal_direction_normalized = goal_direction / distance
-        else:
-            goal_direction_normalized = np.zeros_like(goal_direction)
+        epsilon = 5  # Time penalty
+        #dist = 1e7
+        
         if self.current_wp_index < len(self.waypoints)-1:
             af_nex_wp = self.waypoints[self.current_wp_index + 1]
-            dist = min(dist, np.linalg.norm(np.cross((af_nex_wp - next_wp), (af_nex_wp - self.waypoint_start_dist))/np.linalg.norm(next_wp - af_nex_wp)))
-        
+            #dist = min(dist, np.linalg.norm(np.cross((current_pos - next_wp), (-af_nex_wp + current_pos))/np.linalg.norm(next_wp - af_nex_wp)))
+            potential_current = self.compute_potential(current_pos, next_wp, self.waypoint_start_dist)
+            potential_next = self.compute_potential(af_nex_wp, next_wp, self.waypoint_start_dist)
+            reward = 0
+        #reward = beta * math.exp(-0.5 * dist) 
+            dist = distance
+            dist = min(
+                    dist,
+                    np.linalg.norm(np.cross((current_pos - next_wp), (current_pos - af_nex_wp)))
+                    / np.linalg.norm(next_wp - af_nex_wp),
+                )
+            #dist = distance
+            if dist < self.goal_threshold:
+                reward += 150.0
+                self.successful_waypoints += 1
+                self.waypoint_start_dist = distance
+                print("Waypoint reached!")
+                self.current_wp_index += 1
+            if dist > self.thresh_dist:
+                reward = -15
+            else:
+                x , y, z =current_pos 
+                gx , gy, gz = next_wp
+                distx = np.linalg.norm(x - gx)
+                disty = np.linalg.norm(y - gy)  
+                distz = np.linalg.norm(z - gz)
+                reward -=  math.exp(-beta * distx)
+                reward -=  math.exp(-beta * disty)
+                reward -=  math.exp(-beta * distz)
+                quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
+                current_velocity = np.array([quad_vel.x_val, quad_vel.y_val, quad_vel.z_val])
+                goal_direction = next_wp - current_pos
+                goal_direction = next_wp - af_nex_wp
+                if distance > 1e-6:  # Avoid division by zero
+                    goal_direction_normalized = goal_direction / distance
+                else:
+                    goal_direction_normalized = np.zeros_like(goal_direction)
+                    
+                velocity_toward_goal = np.dot(current_velocity,  goal_direction_normalized)
+                reward += beta * np.linalg.norm(velocity_toward_goal)
+                acceleration = (current_velocity - self.prev_velocity) / self.dt
+                smooth_penalty = gamma * np.linalg.norm(acceleration)
+                reward -= beta* smooth_penalty
+                # Update previous velocity for next step
+                self.prev_velocity = current_velocity.copy()
+                
+                # 4. Collision penalty
+            
+                
+                # 5. Time penalty
+                reward -= epsilon * self.dt *10
+                
+                # 6. Small reward for heading alignment
+                heading_error = (np.linalg.norm(
+                        [
+                            state["features"][1],
+                            state["features"][2],
+                            state["features"][3],
+                        ]) - 5)
+                #reward += 0.001 * heading_error
         else:
+            potential_current = self.compute_potential(current_pos, next_wp, self.waypoint_start_dist)
+            shaping_reward = 0.1* gamma * ( potential_current)
+            reward = shaping_reward
         
-            dist = min(dist, np.linalg.norm(np.cross((current_pos - next_wp), (current_pos - self.waypoint_start_dist))/np.linalg.norm(next_wp - self.waypoint_start_dist)))
-        reward = beta* math.exp(-alpha * dist) 
-        if distance > self.thresh_dist:
-            reward += -50
-        if distance < self.goal_threshold:
-            reward += 150.0
-            self.successful_waypoints += 1
-            self.waypoint_start_dist = distance
-            print("Waypoint reached!")
-            self.current_wp_index += 1
+        
+        #reward += np.min(beta *(current_pos - next_wp) )
+        
         # 1. Distance reward (the closer, the better)
         #reward = alpha / (distance +1)+delta
         #reward +=0.01 * ((distz))
@@ -325,51 +390,25 @@ class DroneEnv(gym.Env):
         
         #reward += delta * np.sum((current_pos - next_wp) / self.dt)
         # 3. Smoothness penalty: penalize high acceleration
-        quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
-        current_velocity = np.array([quad_vel.x_val, quad_vel.y_val, quad_vel.z_val])
-        goal_direction = next_wp - current_pos
         
-            
-        velocity_toward_goal = np.dot(current_velocity, goal_direction_normalized)
-        reward += beta * velocity_toward_goal
-        acceleration = (current_velocity - self.prev_velocity) / self.dt
-        smooth_penalty = gamma * np.linalg.norm(acceleration)
-        reward -= smooth_penalty
-        # Update previous velocity for next step
-        self.prev_velocity = current_velocity.copy()
-        
-        # 4. Collision penalty
-       
-        
-        # 5. Time penalty
-        reward -= epsilon * self.dt
-        
-        # 6. Small reward for heading alignment
-        heading_error = state["features"][1]
-        heading_reward = 0.1 * math.cos(heading_error)
-        reward += heading_reward
+        #reward += heading_reward
         
         return reward 
 
     def interpret_action(self, action):
-        # Actions:
-        # 0: forward (+x)
-        # 1: right (+y)
-        # 2: up (+z)
-        # 3: left (-y)
-        # 4: down (-z)
-        if action == 0:
-            return (1, 0, 0)
-        elif action == 1:
-            return (0, 1, 0)
-        elif action == 2:
-            return (0, 0, 1)
-        elif action == 3:
-            return (0, -1, 0)
-        elif action == 4:
-            return (0, 0, -1)
-        else:
-            return (0, 0, 0)  # For translation; rotation handled separately
+        """Enhanced action interpretation with diagonal movements"""
+        # Base movements
+        movements = {
+            0: (1, 0, 0),    # forward
+            1: (-1, 0, 0), # left
+            2: (0, 1, 0),    # right
+            3: (0, 0, 1),    # up
+            4: (0, 0, -1),   # down
+            5: (0, -1, 0), # backward
+            
+            
+            }
+        return movements.get(action, (0, 0, 0))
 
     def _get_state(self):
         pose = self.client.getMultirotorState().kinematics_estimated
@@ -394,11 +433,16 @@ class DroneEnv(gym.Env):
         goal = np.array([goal_x, goal_y, goal_z])
         dx = goal_x - drone_x
         dy = goal_y - drone_y
+        dz = goal_z - drone_z
         distance = np.linalg.norm(pos- goal)
         desired_heading = math.atan2(dy, dx)
+        
+        #heading_error = (heading_error + math.pi) % (2 * math.pi) - math.pi
+        desired_pitch = math.atan2(dz, dx)
+        desired_roll = math.atan2(dz, dy)
         heading_error = desired_heading - drone_yaw
-        heading_error = (heading_error + math.pi) % (2 * math.pi) - math.pi
-
+        roll_error = desired_roll - self._get_roll_from_pose(pose)
+        pitch_error = desired_pitch - self._get_pitch_from_pose(pose) # _get_roll,pitch_from_pose
         altitude_error = goal_z - drone_z
 
         cos_yaw = math.cos(-drone_yaw)
@@ -415,11 +459,12 @@ class DroneEnv(gym.Env):
             distance,
             heading_error,
             #altitude_error,
-            vx_body, vy_body, vz_body,
-            roll_rate, pitch_rate, yaw_rate
+            roll_error,
+            pitch_error,
         ], dtype=np.float32)
 
         depth_img = self._get_depth_image()
+        
         return {"features": hybrid_features, "depth": depth_img}
 
     def _distance_to_goal(self, features):
@@ -431,6 +476,20 @@ class DroneEnv(gym.Env):
         cosy_cosp = 1.0 - 2.0 * (q.y_val**2 + q.z_val**2)
         yaw = math.atan2(siny_cosp, cosy_cosp)
         return yaw
+    def _get_roll_from_pose(self, pose):
+        q = pose.orientation
+        sinr_cosp = 2.0 * (q.w_val * q.x_val + q.y_val * q.z_val)
+        cosr_cosp = 1.0 - 2.0 * (q.x_val**2 + q.y_val**2)
+        roll = math.atan2(sinr_cosp, cosr_cosp)
+        return roll
+
+    def _get_pitch_from_pose(self, pose):
+        q = pose.orientation
+        sinp = 2.0 * (q.w_val * q.y_val - q.z_val * q.x_val)
+        # Clamp sinp to the range [-1, 1] to avoid errors from floating point imprecision.
+        sinp = max(-1.0, min(1.0, sinp))
+        pitch = math.asin(sinp)
+        return pitch
 
     def _get_depth_image(self):
         try:
@@ -438,15 +497,19 @@ class DroneEnv(gym.Env):
             responses = self.client.simGetImages([request])
             if (not responses or responses[0] is None or responses[0].width == 0 or responses[0].height == 0):
                 return np.full((84,84), 100.0, dtype=np.float32)
+            
             depth_img = np.array(responses[0].image_data_float, dtype=np.float32)
             depth_img = depth_img.reshape(responses[0].height, responses[0].width)
             depth_img = cv2.resize(depth_img, (84,84), interpolation=cv2.INTER_LINEAR)
+            #cv2.imshow("Depth", depth_img)
             return depth_img
         except Exception as e:
             print("Error reading depth image:", e)
             return np.full((84,84), 100.0, dtype=np.float32)
 
     def render(self, mode='human'):
+        #
+        cv2.waitKey(1)
         pass
 
     def close(self):
@@ -455,7 +518,6 @@ class DroneEnv(gym.Env):
             self.client.enableApiControl(False)
         except:
             pass
-
 def make_env(rank, seed=0):
     def _init():
         env = DroneEnv()
@@ -475,11 +537,9 @@ class DualDQNNetwork(nn.Module):
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.LayerNorm([64, 9, 9]),
             nn.ReLU(),
+            #nn.Dropout(0.2),  # Add dropout layer with 20% dropout rate
             nn.Conv2d(64, 128, kernel_size=3, stride=1),
             nn.LayerNorm([128, 7, 7]),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, stride=1),
-            nn.LayerNorm([128, 5, 5]),
             nn.ReLU(),
             nn.Flatten()
         )
@@ -487,6 +547,12 @@ class DualDQNNetwork(nn.Module):
         self.feature_net = nn.Sequential(
             nn.Linear(observation_space.spaces["features"].shape[0], 256),
             nn.LayerNorm(256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
+            nn.LeakyReLU(),
+            
+            
             
             
             
@@ -497,37 +563,35 @@ class DualDQNNetwork(nn.Module):
             n_flatten = self.cnn(torch.zeros(1, 1, 84, 84)).shape[1]
         
         self.fusion = nn.Sequential(
-            nn.Linear(n_flatten, 1024),
-            nn.LayerNorm(1024),
-            nn.ReLU(),
-            nn.Linear(1024, 512),  
-            nn.LayerNorm(512),  
-            nn.ReLU(),
-            nn.Linear(512, 256),
+            nn.Linear(n_flatten+128, 256),
             nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Dropout(0.2)  # Add dropout for regularization
+            nn.Linear(256, 128),  
+            nn.LayerNorm(128),  
+            nn.ReLU(),
+            nn.Dropout(0.2)
+            #nn.Dropout(0.2)  # Add dropout for regularization
         )
         
         self.advantage = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.LayerNorm(256),
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
             nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.LayerNorm(256),
+            nn.Linear(128, 64),
+            nn.LayerNorm(64),
             nn.ReLU(),
-            nn.Linear(256, n_actions),
+            nn.Linear(64, n_actions),
             #nn.Tanh()  # Bound advantage estimates
         )
         
         self.value = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.LayerNorm(256),
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
             nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.LayerNorm(256),
+            nn.Linear(128, 64),
+            nn.LayerNorm(64),
             nn.ReLU(),
-            nn.Linear(256, 1),
+            nn.Linear(64, 1),
             #nn.Tanh()  
         )
         
@@ -552,21 +616,26 @@ class DualDQNNetwork(nn.Module):
         vector_features = self.feature_net(observation["features"])
         
         # Normalize features before concatenation
-        cnn_features = F.normalize(cnn_features, p=2, dim=1)
-        vector_features = F.normalize(vector_features, p=2, dim=1)
+        #cnn_features = F.normalize(cnn_features, p=2, dim=1)
+        #vector_features = F.normalize(vector_features, p=2, dim=1)
         
         
-        fused_features = self.fusion(cnn_features)
-        combined = torch.cat((fused_features, vector_features), dim=1)
         
-        advantage = self.advantage(combined)
-        value = self.value(combined)
+        combined = torch.cat((cnn_features, vector_features), dim=1)
+        fused_features = self.fusion(combined)
         
-        # Scale the advantage and value to appropriate ranges
-        advantage = advantage   # Scale based on expected reward range
-        value = value           # Scale based on expected reward range
+        advantage = self.advantage(fused_features)
+        value = self.value(fused_features)
         
-        q_values = value + (advantage - advantage.mean(dim=1, keepdim=True))
+        # Reshape advantage and value outputs
+        # Proper advantage scaling
+        advantage = advantage - advantage.mean(dim=1, keepdim=True)
+        
+        # Scale the outputs to match reward range
+        value = value * 10.0  # Scale up to match reward magnitude
+        advantage = advantage * 10.0  # Scale advantages to half of value range
+        
+        q_values = value + advantage
         
         if training:
             self.train()
@@ -596,17 +665,17 @@ class ReplayBuffer:
         return len(self.buffer)
 
 class ImprovedDualDQNAgent:
-    def __init__(self, 
+    def __init__(self,
                  env: gym.Env,
-                 learning_rate: float = 1e-4,
+                 learning_rate: float = 3e-4,  # Increased from 1e-4
                  gamma: float = 0.99,
-                 tau: float = 0.995,  # Soft update parameter
+                 tau: float = 0.005,  # Changed from 0.995 to 0.005 (faster updates)
                  epsilon_start: float = 1.0,
-                 epsilon_final: float = 0.01,
-                 epsilon_decay: float = 0.9995,
+                 epsilon_final: float = 0.05,  # Increased from 0.01
+                 epsilon_decay: float = 0.995,  # Faster decay
                  buffer_size: int = 500000,
-                 batch_size: int = 128,
-                 update_freq: int = 1):  # How often to perform soft updates
+                 batch_size: int = 256,  # Increased from 128
+                 update_freq: int = 4): # How often to perform soft updates
         
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -674,49 +743,42 @@ class ImprovedDualDQNAgent:
                 )
     
     def update_network(self) -> Tuple[float, float]:
-        """Perform a single update step on the network."""
         if len(self.replay_buffer) < self.batch_size:
             return 0.0, 0.0
 
-        # Sample and transfer batch to device
         states, actions, rewards, next_states, dones = [
             x.to(self.device) if isinstance(x, torch.Tensor) 
             else {k: v.to(self.device) for k, v in x.items()}
             for x in self.replay_buffer.sample(self.batch_size)
         ]
 
-        # Compute current Q values
+        # Scale rewards to match network output range
+        rewards = rewards / 100.0  # Scale down rewards to [-1, 1.5] range
+
+        # Get current Q values
         current_q_values = self.current_network(states).gather(1, actions.unsqueeze(1))
         
-        # Compute next Q values using target network
         with torch.no_grad():
-            # Get actions from current network (DDQN)
-            next_actions = self.current_network(next_states).max(1)[1].unsqueeze(1)
+            # DDQN: Use current network to select actions
+            next_actions = self.current_network(next_states).argmax(dim=1, keepdim=True)
             
-            # Get Q-values from target network for these actions
-            next_q_values = self.target_network(next_states).gather(1, next_actions)
+            # Use target network to evaluate actions
+            next_q_values = self.target_network(next_states)
+            next_q_values = next_q_values.gather(1, next_actions)
             
-            # Compute target Q values
+            # Compute target Q values with proper scaling
             target_q_values = rewards.unsqueeze(1) + \
-                            (1 - dones.unsqueeze(1)) * \
-                            self.gamma * next_q_values
+                            (1 - dones.unsqueeze(1)) * self.gamma * next_q_values
 
-        # Compute loss using Huber loss
-        loss = F.mse_loss(current_q_values, target_q_values)
+        # Use Huber loss for better stability
+        loss = F.smooth_l1_loss(current_q_values, target_q_values)
 
-        # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
-        
-        # Clip gradients to prevent exploding gradients
-        torch.nn.utils.clip_grad_norm_(self.current_network.parameters(), max_norm=10)
-        
+        torch.nn.utils.clip_grad_norm_(self.current_network.parameters(), max_norm=1.0)  # Reduced from 10
         self.optimizer.step()
 
-        # Calculate average Q value for monitoring
-        avg_q = current_q_values.mean().item()
-        
-        return loss.item(), avg_q
+        return loss.item(), current_q_values.mean().item()
     
     def train(self, num_episodes: int, max_steps: int = 1000) -> None:
         """Train the agent for a specified number of episodes."""
