@@ -57,7 +57,7 @@ This forked repository contains two improved implementations of autonomous drone
 
 **ImprovedPPO.py**
 
-- Enhanced feature extractor with residual connections and layer normalization
+- Enhanced feature extractor with residual connections, layer normalization, feature fusion layers
 - Improved reward shaping with components for smoothness, progress, and exploration
 - Deeper policy and value networks
 - Learning rate scheduling and advanced hyperparameter tuning
