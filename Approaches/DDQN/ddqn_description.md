@@ -12,21 +12,21 @@
 
 **Функции**
 
-Реализация Двойной глубокой Q-сети для стабильного обучения
-Сочетание сверточной и полносвязной нейронных сетей
-Буфер воспроизведения опыта для улучшения эффективности выборок
-Стратегия эпсилон-жадного исследования с затуханием
-Мягкое обновление целевой сети
-Дискретное пространство действий для упрощенного управления дроном
-Функция вознаграждения на основе достижения цели и избегания столкновений
+- Реализация Двойной глубокой Q-сети для стабильного обучения
+- Сочетание сверточной и полносвязной нейронных сетей
+- Буфер воспроизведения опыта для улучшения эффективности выборок
+- Стратегия эпсилон-жадного исследования с затуханием
+- Мягкое обновление целевой сети
+- Дискретное пространство действий для упрощенного управления дроном
+- Функция вознаграждения на основе достижения цели и избегания столкновений
 
 **Требования**
 
-Python 3.8+
-TensorFlow 2.x
-Python API AirSim
-NumPy
-Unreal Engine с настроенным плагином AirSim"
+- Python 3.8+
+- TensorFlow 2.x
+- Python API AirSim
+- NumPy
+- Unreal Engine с настроенным плагином AirSim"
 ___________________________________________________________________________________
 **DDQN Drone Navigation in AirSim**
 
@@ -36,25 +36,28 @@ This branch implements a Double Deep Q-Network (DDQN) algorithm for autonomous d
 
 The implementation uses a reinforcement learning approach with a DDQN architecture to train a drone agent. The agent learns to take appropriate actions based on:
 
-Depth images from a front-facing camera (visual perception)
-Polar coordinates to the goal (relative positioning)
+- Depth images from a front-facing camera (visual perception)
+- Polar coordinates to the goal (relative positioning)
 
 The system is designed to work with the AirSim simulator running in an Unreal Engine environment.
 
 **Features**
 
-Double Deep Q-Network implementation for more stable learning
-Combined convolutional and dense neural network architecture
-Experience replay buffer to improve sample efficiency
-Epsilon-greedy exploration strategy with decay
-Soft target network updates
-Discrete action space for simplified drone control
-Reward function based on goal reaching and collision avoidance
+- Double Deep Q-Network implementation for more stable learning
+- Combined convolutional and dense neural network architecture
+- Experience replay buffer to improve sample efficiency
+- Epsilon-greedy exploration strategy with decay
+- Soft target network updates
+- Discrete action space for simplified drone control
+- Reward function based on goal reaching and collision avoidance
 
 **Requirements**
 
-Python 3.8+
-TensorFlow 2.x
-AirSim Python API
-NumPy
+- Python 3.8+
+- pytorch
+- TensorFlow 2.x
+- OpenCV
+- AirSim Python API
+- NumPy
+- Gymnasium
 Unreal Engine with AirSim plugin configured
