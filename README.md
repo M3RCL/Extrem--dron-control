@@ -49,12 +49,12 @@ extrem-dron-control/
     <tr>
       <td style="width: 50%; text-align: center; padding: 200px;">
         <a href="https://github.com/user-attachments/assets/5d38a574-dd75-4b17-8e61-80d49d10d4d8">
-          <img src="https://github.com/user-attachments/assets/26614518-9272-431a-959f-2417900e2b00" alt="Video 1 Thumbnail" style="max-width: 96%;">
+          <img src="https://github.com/user-attachments/assets/26614518-9272-431a-959f-2417900e2b00" alt="Video 1 Thumbnail" width="350";">
         </a>
       </td>
       <td style="width: 50%; text-align: center; padding: 200px;">
         <a href="https://github.com/user-attachments/assets/79091c33-6c83-4120-b1f8-db970f30a6b1">
-          <img src="https://github.com/user-attachments/assets/7c1d691e-ea74-4937-812b-656952125129" alt="Video 2 Thumbnail" style="max-width: 96%;">
+          <img src="https://github.com/user-attachments/assets/7c1d691e-ea74-4937-812b-656952125129" alt="Video 2 Thumbnail" width="350"">
         </a>
       </td>
     </tr>
