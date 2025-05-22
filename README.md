@@ -5,6 +5,7 @@
 
 Репозиторий содержит реализацию трёх алгоритмов на базе RL для управления квадрокоптером при экстремальном маневрировании.
 
+```bash
 extrem-dron-control/
 ├── Approaches
 │   ├── DDQN
@@ -19,8 +20,10 @@ extrem-dron-control/
 │       ├── SAC_casc.py
 │       ├── sac_m_description.md
 └── README.md
+```
 
 Описание алгоритмов:
+
 [DDQN](./Approaches/DDQN/ddqn_description.md)  
 [PPO](./Approaches/PPO/ppo_description.md)  
 [SAC](./Approaches/SAC/sac_m_description.md)
