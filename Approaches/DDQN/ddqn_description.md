@@ -1,7 +1,7 @@
 
 **DDQN Drone Navigation in AirSim**
 
-Этот ветвь реализует алгоритм Двойной глубокой Q-сети (DDQN) для автономной навигации дрона по путевым точкам в симуляторе AirSim. Система использует данные с глубинной камеры и полярные координаты, чтобы обучить дрон преодолевать препятствия и достигать заданных целей.
+Директория DDQN содержит реализацию алгоритма двойной глубокой Q-сети (DDQN) для автономной навигации дрона по ключевым точкам маршрута в симуляторе AirSim. Система использует данные с камеры глубины и полярные координаты для обучения дрона преодолевать препятствия и достигать заданных целей.
 
 **Обзор**
 
@@ -10,13 +10,13 @@
 Полярных координат относительно цели (относительное позиционирование)
 Система предназначена для работы с симулятором AirSim в среде Unreal Engine.
 
-**Функции**
+**Функционал и особенности**
 
-- Реализация Двойной глубокой Q-сети для стабильного обучения
+- Реализация двойной глубокой Q-сети для стабильного обучения
 - Сочетание сверточной и полносвязной нейронных сетей
 - Буфер воспроизведения опыта для улучшения эффективности выборок
 - Стратегия эпсилон-жадного исследования с затуханием
-- Мягкое обновление целевой сети
+- Мягкое обновление сети цели
 - Дискретное пространство действий для упрощенного управления дроном
 - Функция вознаграждения на основе достижения цели и избегания столкновений
 
@@ -30,7 +30,7 @@
 ___________________________________________________________________________________
 **DDQN Drone Navigation in AirSim**
 
-This branch implements a Double Deep Q-Network (DDQN) algorithm for autonomous drone waypoint navigation in the AirSim simulation environment. The system uses depth camera information and polar coordinates to enable the drone to learn how to navigate to specified waypoints while avoiding obstacles.
+Directory DDQN contain implementation of the Double Deep Q-Network (DDQN) algorithm for autonomous drone waypoint navigation in the AirSim simulation environment. The system uses depth camera information and polar coordinates to enable the drone to learn how to navigate to specified waypoints while avoiding obstacles.
 
 **Overview**
 
@@ -60,4 +60,4 @@ The system is designed to work with the AirSim simulator running in an Unreal En
 - AirSim Python API
 - NumPy
 - Gymnasium
-Unreal Engine with AirSim plugin configured
+- Unreal Engine with AirSim plugin configured
