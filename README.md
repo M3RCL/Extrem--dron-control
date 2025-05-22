@@ -7,31 +7,18 @@
 
 ```bash
 extrem-dron-control/
-
 ├── Approaches
-
 │   ├── DDQN
-
 │   │   ├── ddqn_description.md
-
 │   │   ├── DualDQN.py
-
 │   │   └── interrupted_drone_dualdqn.pth
-
 │   ├── PPO
-
 │   │   ├── ImprovedPPO.py
-
 │   │   ├── ppo_description.md
-
 │   │   └── PPO_drone.py
-
 │   └── SAC
-
 │       ├── SAC_casc.py
-
 │       ├── sac_m_description.md
-
 └── README.md
 ```
 
