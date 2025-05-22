@@ -43,7 +43,7 @@ ________________________________________________________________________________
 
 **Overview**
 
-This forked repository contains two improved implementations of autonomous drone navigation in AirSim using the Proximal Policy Optimization (PPO) algorithm. Both implementations leverage depth camera data and vector features to navigate drones through specified waypoints while avoiding obstacles. Each implementation offers unique enhancements to improve learning stability and navigation performance.
+Directory PPO contains two improved implementations of autonomous drone navigation in AirSim using the Proximal Policy Optimization (PPO) algorithm. Both implementations leverage depth camera data and vector features to navigate drones through specified waypoints while avoiding obstacles. Each implementation offers unique enhancements to improve learning stability and navigation performance.
 
 **Features**
 
