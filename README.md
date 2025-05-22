@@ -36,7 +36,7 @@ extrem-dron-control/
 - Python API AirSim
 - NumPy
 - Stable Baselines3
-- Unreal Engine с настроенным плагином AirSim"
+- Unreal Engine с настроенным плагином AirSim
 - OpenCV
 - Gymnasium
 
