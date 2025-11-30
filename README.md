@@ -22,7 +22,7 @@ Custom Ignition Gazebo + ROS2 Humble simulation for training RL agents on quadco
          ▼
 ┌─────────────────┐
 │ Gym Environment │ ◄──── state [pos, vel, orientation]
-│ (drone_gym_env) │
+│ (gym_env)       │
 └────────┬────────┘
          │ ROS2 topics
          ▼
