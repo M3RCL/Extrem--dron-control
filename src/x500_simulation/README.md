@@ -1,6 +1,6 @@
 # X500 Drone RL Симуляция
 
-Настроенная Ignition Gazebo + ROS2 Humble симуляционная среда для обучения RL-агентов управлению квадрокоптером на базе моедли дрона PX4 X500 без PX4/QGroundControl пакетов.
+Настроенная Ignition Gazebo + ROS2 Humble симуляционная среда для обучения RL-агентов управлению квадрокоптером на базе модели дрона PX4 X500 без PX4/QGroundControl пакетов.
 
 ## Преимущества
 
@@ -18,7 +18,7 @@
 │  RL-агент       │
 │  (SAC/PPO/TD3)  │
 └────────┬────────┘
-         │ действия [thrust, roll, pitch, yaw]
+         │ actions [thrust, roll, pitch, yaw]
          ▼
 ┌─────────────────┐
 │ Gym среда │ ◄──── state [pos, vel, orientation]
