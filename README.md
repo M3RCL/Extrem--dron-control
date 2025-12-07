@@ -76,7 +76,6 @@
 - Gymnasium
 - Gazebo Ignition
 - ROS2
-- Stable Baselines3
 
 ## Демонстрационные материалы
 
