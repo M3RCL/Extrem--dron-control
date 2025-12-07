@@ -1,36 +1,36 @@
-# X500 Drone RL Simulation
+# X500 Drone RL Симуляция
 
-Custom Ignition Gazebo + ROS2 Humble simulation for training RL agents on quadcopter control, using the PX4 X500 drone model without PX4/QGroundControl dependencies.
+Настроенная Ignition Gazebo + ROS2 Humble симуляционная среда для обучения RL-агентов управлению квадрокоптером на базе моедли дрона PX4 X500 без PX4/QGroundControl пакетов.
 
-## Features
+## Преимущества
 
-- ✅ Direct motor control (no flight controller needed)
-- ✅ Gymnasium-compatible environment for RL training
-- ✅ Real-time state observation (IMU, GPS, Barometer)
-- ✅ Customizable reward functions
-- ✅ SAC (Soft Actor-Critic) example implementation
-- ✅ Modular architecture for easy experimentation
+- ✅ Прямое управление двигателями (контроллер полёта не требуется)
+- ✅ Среда, совместимая со спортивным залом, для обучения с поддержанием навыков (RL)
+- ✅ Наблюдение за состоянием в реальном времени (IMU, GPS, барометр)
+- ✅ Настраиваемые функции вознаграждения
+- ✅ Пример реализации SAC (Soft Actor-Critic)
+- ✅ Модульная архитектура для удобства экспериментов
 
-## Architecture
+## Архитектура
 
 ```
 ┌─────────────────┐
-│  RL Agent       │
+│  RL-агент       │
 │  (SAC/PPO/TD3)  │
 └────────┬────────┘
-         │ actions [thrust, roll, pitch, yaw]
+         │ действия [thrust, roll, pitch, yaw]
          ▼
 ┌─────────────────┐
-│ Gym Environment │ ◄──── state [pos, vel, orientation]
+│ Gym среда │ ◄──── state [pos, vel, orientation]
 │ (gym_env)       │
 └────────┬────────┘
-         │ ROS2 topics
+         │ ROS2 топики
          ▼
 ┌─────────────────┐
-│ Drone Controller│ ◄──── /x500/state
+│ Контроллер дрона│ ◄──── /x500/state
 │ (motor mixing)  │ ────► /x500/action
 └────────┬────────┘
-         │ motor speeds
+         │ скорости приводов
          ▼
 ┌─────────────────┐
 │ Ignition Gazebo │
@@ -38,25 +38,25 @@ Custom Ignition Gazebo + ROS2 Humble simulation for training RL agents on quadco
 └─────────────────┘
 ```
 
-## Prerequisites
+## Пререквизиты
 
 ```bash
-# Ubuntu 22.04 with ROS2 Humble
+# Ubuntu 22.04 с ROS2 Humble
 sudo apt update
 
-# Install ROS2 Humble (if not already installed)
+# Установка ROS2 Humble (если не была установлена ранее)
 # Follow: https://docs.ros.org/en/humble/Installation.html
 
-# Install Gazebo (Ignition)
+# Установка Gazebo (Ignition)
 sudo apt install ros-humble-ros-gz ros-humble-ros-gz-sim ros-humble-ros-gz-bridge
 
-# Install dependencies
+# Установка вспомогательных программных пакетов
 sudo apt install python3-pip python3-colcon-common-extensions
 pip3 install gymnasium stable-baselines3 numpy scipy torch
 ```
 
 
-### Setup model path
+### Указать системе путь к пакетам
 
 ```bash
 # Add to ~/.bashrc
@@ -64,7 +64,7 @@ echo 'export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/drone_rl_ws/src/x500_s
 source ~/.bashrc
 ```
 
-### Build
+### Сборка
 
 ```bash
 cd ~/drone_rl_ws
@@ -72,107 +72,107 @@ colcon build
 source install/setup.bash
 ```
 
-## Usage
+## Использование
 
-### Launch Simulation
+### Запуск симуляции
 
 ```bash
-# Terminal 1: Launch Gazebo + Controller
+# Терминал 1: Запуск Gazebo + Контроллер
 ros2 launch x500_simulation drone_sim.launch.py
 
-# The simulation will start with:
-# - Gazebo visualization
-# - X500 drone spawned at origin
-# - Drone controller node running
-# - ROS2-Gazebo bridge active
+# После отправки команды запускаются следующие программы:
+# - Gazebo
+# - X500 дрон в Gazebo
+# - Нода, реализующая контроллер дрона
+# - ROS2-Gazebo bridge
 ```
 
-### Train RL Agent
+### Обучение RL-агента
 
 ```bash
-# Terminal 2: Start training
+# Терминал 2: запуск обучения
 cd ~/drone_rl_ws/src/x500_simulation/scripts
 python3 train_drone.py --mode train --timesteps 1000000
 
 
-### Test Trained Agent
+### Проверка
 
 ```bash
 python3 train_drone.py --mode test --model_path ./models/drone_sac_final.zip
 ```
 
-### Manual Testing
+### Тестирование
 
 ```bash
-# Publish action directly
+# Терминал 3: отправка команды
 ros2 topic pub /x500/action std_msgs/msg/Float32MultiArray \
   "data: [0.5, 0.0, 0.0, 0.0]" --once
 
-# Monitor state
+# Монитор состояния
 ros2 topic echo /x500/state
 
-# Monitor odometry
+# Одометрия
 ros2 topic echo /model/x500/odometry
 ```
 
-## Customization
+## Настройка
 
-### Modify Reward Function
+### Изменение reward function
 
 Edit `drone_gym_env.py`:
 
 ```python
 def compute_reward(self):
-    # Your custom reward logic
+    # Задание reward логики
     distance = np.linalg.norm(self.state[:3] - self.target_position)
     
-    # Example: sparse reward
+    # Пример: sparse reward
     reward = 100.0 if distance < 0.5 else -distance
     
     return reward
 ```
 
-### Change Motor Mixing
+### Настройка приводов
 
 Edit `drone_controller.py`:
 
 ```python
 def compute_motor_speeds(self, thrust, roll_rate, pitch_rate, yaw_rate):
-    # Custom mixing matrix for different drone configurations
+    # Для изменения конфигурации дрона редактировать матрицу
     mixing_matrix = np.array([
         # [thrust, roll, pitch, yaw]
-        [1,  -1,  1,  1],  # Modify based on your setup
+        [1,  -1,  1,  1],
         # ...
     ])
 ```
 
 
-## State Space
+## Пространство состояний
 
-The environment provides 15D observations:
+Происходит оценка следующих величин:
 
 ```python
 [
-    # Position (3D)
+    # Положение (3D)
     x, y, z,
     
-    # Velocity (3D)
+    # Скорость (3D)
     vx, vy, vz,
     
-    # Orientation (3D, Euler angles)
+    # Ориентация (3D)
     roll, pitch, yaw,
     
-    # Angular velocity (3D)
+    # Угловая скорость (3D)
     wx, wy, wz,
     
-    # Target position (3D)
+    # Координаты целевой точки пути (3D)
     target_x, target_y, target_z
 ]
 ```
 
-## Action Space
+## Пространства действий
 
-4D continuous actions:
+4D непрерывные опции:
 
 ```python
 [
