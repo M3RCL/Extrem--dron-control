@@ -60,7 +60,9 @@
 [SAC](./Approaches/SAC/sac_m_description.md)
 
 Описание симуляционного пакета:
+
 [x500 в Gazebo-ROS2](./src/x500_simulation/package_readme.md)
+
 [x500 в Gazebo-ROS2 (eng)](./src/x500_simulation/package_readme_eng.md)
 
 ## Пререквизиты
