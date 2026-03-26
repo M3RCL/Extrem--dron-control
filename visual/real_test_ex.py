@@ -115,7 +115,7 @@ class DroneHardware:
             roll      : rad, positive = right wing down  (range ± pi/3 = ±60°)
             pitch     : rad, positive = nose down        (range ± pi/3 = ±60°)
             yaw_rate  : rad/s, positive = clockwise from above (range ± pi)
-            throttle  : normalised [0, 5.0] — map to your FC's throttle scale
+            throttle  : normalised [0, 1.0] — map to your FC's throttle scale
 
         The agent runs at 50 Hz.  This method is called once per control cycle.
         It should be non-blocking (fire-and-forget or async).
@@ -275,7 +275,7 @@ class ObservationBuilder:
 _MAX_ROLL     = math.pi / 3   # 60°
 _MAX_PITCH    = math.pi / 3   # 60°
 _MAX_YAW_RATE = math.pi       # 180°/s
-_MAX_THROTTLE = 5.0           # normalised throttle ceiling
+_MAX_THROTTLE = 1.0           # normalised throttle ceiling
 
 
 def scale_action(action: np.ndarray):
@@ -288,7 +288,7 @@ def scale_action(action: np.ndarray):
         roll      : rad  ∈ [−π/3, +π/3]
         pitch     : rad  ∈ [−π/3, +π/3]
         yaw_rate  : rad/s ∈ [−π, +π]
-        throttle  : float ∈ [0, 5.0]
+        throttle  : float ∈ [0, 1.0]
     """
     roll      = float(action[0]) * _MAX_ROLL
     pitch     = float(action[1]) * _MAX_PITCH
